@@ -3,7 +3,7 @@
 /**
  * Plugin Name: Gigio Mailshot
  * Description: Send email about upcoming events
- * Version: 1.4.0
+ * Version: 1.4.1
  * Author: Alan Cameron Wills
  * Licence: GPLv2
  * Requires Plugins: gigiau-events-posters
@@ -207,7 +207,8 @@ function eventsToHtml($events)
 ?>
     <style>
         .events img {
-            width: 200px;
+            max-width: 350px;
+            width: 100%;
         }
 
         .eventHead {
@@ -252,7 +253,7 @@ function eventsToHtml($events)
                 <div class="detail">
                     <?= $event['date'] ?><br /><?= $event['price'] ?>
                     <br />
-                    <a href="<?= $event['url'] ?>"><img src="<?= $event['src'] ?>" /></a>
+                    <a href="<?= $event['url'] ?>"><img src="<?= $event['src'] ?>" style="max-width:350px; width:100%;" /></a>
                 </div>
                 <div class="eventFoot">
                     <?= $event['content'] ?>
