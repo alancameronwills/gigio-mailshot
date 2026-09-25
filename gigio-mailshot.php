@@ -3,7 +3,7 @@
 /**
  * Plugin Name: Gigio Mailshot
  * Description: Send email about upcoming events
- * Version: 1.4.1
+ * Version: 1.5.0
  * Author: Alan Cameron Wills
  * Licence: GPLv2
  * Requires Plugins: gigiau-events-posters
@@ -175,6 +175,7 @@ function gigio_mailshot_get_upcoming_events()
             "src" => $gig['smallpic'],
             "content" => shortContent($gig['content']),
             "booking" => !empty($meta['bookinglink']),
+            "booklabel" => !empty($meta['booklabel']) ? $meta['booklabel'] : "Booking essential",
             "dt" => strtotime($dtstart),
             "date" => date('D j M Y G:i', strtotime($dtstart)),
             "subtitle" => gigio_decode_text($meta['venue'] ?? ''),
@@ -246,7 +247,7 @@ function eventsToHtml($events)
                 <?php
                 if ($event['booking']) {
                 ?>
-                    <div class="booking"><a href="<?= $event['url'] ?>">Booking essential</a></div>
+                    <div class="booking"><a href="<?= $event['url'] ?>"><?= $event['booklabel'] ?></a></div>
                 <?php
                 }
                 ?>
