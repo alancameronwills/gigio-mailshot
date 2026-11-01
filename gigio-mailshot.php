@@ -3,7 +3,7 @@
 /**
  * Plugin Name: Gigio Mailshot
  * Description: Send email about upcoming events
- * Version: 1.6.1
+ * Version: 1.6.2
  * Author: Alan Cameron Wills
  * Licence: GPLv2
  * Requires Plugins: gigiau-events-posters
@@ -643,3 +643,35 @@ add_filter('upgrader_post_install', function ($response, $hook_extra, $result) {
     }
     return $response;
 }, 10, 3);
+
+
+// "Check for updates" link on the Plugins screen
+add_filter('plugin_action_links_' . plugin_basename(__FILE__), function ($links) {
+    if (current_user_can('update_plugins')) {
+        $url = wp_nonce_url(admin_url('plugins.php?gigio_mailshot_check=1'), 'gigio_mailshot_check');
+        $links[] = '<a href="' . esc_url($url) . '">Check for updates</a>';
+    }
+    return $links;
+});
+
+add_action('admin_init', function () {
+    if (empty($_GET['gigio_mailshot_check']) || !current_user_can('update_plugins')) {
+        return;
+    }
+    check_admin_referer('gigio_mailshot_check');
+    delete_site_transient('update_plugins'); // also clears our release cache
+    wp_update_plugins();
+    wp_safe_redirect(admin_url('plugins.php?gigio_mailshot_checked=1'));
+    exit;
+});
+
+add_action('admin_notices', function () {
+    if (empty($_GET['gigio_mailshot_checked'])) {
+        return;
+    }
+    $updates = get_site_transient('update_plugins');
+    $found = isset($updates->response[plugin_basename(__FILE__)]);
+    echo '<div class="notice notice-info is-dismissible"><p>Gigio Mailshot: '
+        . ($found ? 'a new version is available - use "update now" in the plugin list.' : 'you have the latest version.')
+        . '</p></div>';
+});
