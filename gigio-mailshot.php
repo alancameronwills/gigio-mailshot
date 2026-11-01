@@ -3,14 +3,28 @@
 /**
  * Plugin Name: Gigio Mailshot
  * Description: Send email about upcoming events
- * Version: 1.6.0
+ * Version: 1.6.1
  * Author: Alan Cameron Wills
  * Licence: GPLv2
  * Requires Plugins: gigiau-events-posters
  * Update URI: https://github.com/alancameronwills/gigio-mailshot
  */
 
- include "mailchimp-keys.php";
+// Keys file is local-only (gitignored, not in release zips). Don't fatal if it's missing.
+ if (file_exists(__DIR__ . "/mailchimp-keys.php")) {
+     include __DIR__ . "/mailchimp-keys.php";
+ } else {
+     class MailChimpKeys
+     {
+         const MailChimpKey = "";
+         const MailChimpAuthorization = "";
+         const MailChimpUrl = "";
+         const FolderID = "";
+     }
+     add_action('admin_notices', function () {
+         echo '<div class="notice notice-error"><p><strong>Gigio Mailshot:</strong> <code>mailchimp-keys.php</code> is missing from the plugin folder. Mailchimp features won't work until it is restored (see README.md).</p></div>';
+     });
+ }
  
 class MailChimpEmail extends MailChimpKeys
 {
@@ -607,3 +621,25 @@ add_filter('upgrader_source_selection', function ($source, $remote_source, $upgr
     }
     return $source;
 }, 10, 4);
+
+
+// Updates replace the whole plugin folder, and the release zip doesn't contain the local keys file:
+// stash it before the update and put it back afterwards.
+add_filter('upgrader_pre_install', function ($response, $hook_extra) {
+    if (($hook_extra['plugin'] ?? '') === plugin_basename(__FILE__) && file_exists(__DIR__ . '/mailchimp-keys.php')) {
+        copy(__DIR__ . '/mailchimp-keys.php', get_temp_dir() . 'gigio-mailshot-keys.php');
+    }
+    return $response;
+}, 10, 2);
+
+add_filter('upgrader_post_install', function ($response, $hook_extra, $result) {
+    $stash = get_temp_dir() . 'gigio-mailshot-keys.php';
+    if (($hook_extra['plugin'] ?? '') === plugin_basename(__FILE__) && file_exists($stash)) {
+        if (!empty($result['destination']) && copy($stash, trailingslashit($result['destination']) . 'mailchimp-keys.php')) {
+            unlink($stash);
+        } else {
+            error_log('gigio-mailshot: could not restore mailchimp-keys.php; backup left at ' . $stash);
+        }
+    }
+    return $response;
+}, 10, 3);
