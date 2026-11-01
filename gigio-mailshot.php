@@ -3,7 +3,7 @@
 /**
  * Plugin Name: Gigio Mailshot
  * Description: Send email about upcoming events
- * Version: 1.6.2
+ * Version: 1.6.3
  * Author: Alan Cameron Wills
  * Licence: GPLv2
  * Requires Plugins: gigiau-events-posters
@@ -22,7 +22,7 @@
          const FolderID = "";
      }
      add_action('admin_notices', function () {
-         echo '<div class="notice notice-error"><p><strong>Gigio Mailshot:</strong> <code>mailchimp-keys.php</code> is missing from the plugin folder. Mailchimp features won't work until it is restored (see README.md).</p></div>';
+         echo '<div class="notice notice-error"><p><strong>Gigio Mailshot:</strong> <code>mailchimp-keys.php</code> is missing from the plugin folder. Mailchimp features will not work until it is restored (see README.md).</p></div>';
      });
  }
  
