@@ -3,10 +3,11 @@
 /**
  * Plugin Name: Gigio Mailshot
  * Description: Send email about upcoming events
- * Version: 1.5.1
+ * Version: 1.6.0
  * Author: Alan Cameron Wills
  * Licence: GPLv2
  * Requires Plugins: gigiau-events-posters
+ * Update URI: https://github.com/alancameronwills/gigio-mailshot
  */
 
  include "mailchimp-keys.php";
@@ -526,3 +527,83 @@ function gigio_mailshot_admin_page(){
     <?php
 	
 }
+
+/**** GITHUB AUTO-UPDATE ****/
+
+const GIGIO_MAILSHOT_GITHUB_REPO = 'alancameronwills/gigio-mailshot';
+
+/** Latest GitHub release (cached 6 hours): ['version' => ..., 'zip' => ..., 'url' => ..., 'notes' => ...] or null. */
+function gigio_mailshot_latest_release($force = false)
+{
+    $cacheKey = 'gigio_mailshot_latest_release';
+    if (!$force) {
+        $cached = get_transient($cacheKey);
+        if ($cached !== false) {
+            return $cached ?: null;
+        }
+    }
+    $response = wp_remote_get(
+        'https://api.github.com/repos/' . GIGIO_MAILSHOT_GITHUB_REPO . '/releases/latest',
+        ['headers' => ['Accept' => 'application/vnd.github+json'], 'timeout' => 10]
+    );
+    $release = null;
+    if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) == 200) {
+        $data = json_decode(wp_remote_retrieve_body($response), true);
+        if (!empty($data['tag_name'])) {
+            // Prefer the zip asset built by release.ps1; fall back to GitHub's source zipball
+            $zip = $data['zipball_url'] ?? '';
+            foreach ($data['assets'] ?? [] as $asset) {
+                if (substr($asset['name'], -4) === '.zip') {
+                    $zip = $asset['browser_download_url'];
+                    break;
+                }
+            }
+            $release = [
+                'version' => ltrim($data['tag_name'], 'vV'),
+                'zip' => $zip,
+                'url' => $data['html_url'] ?? '',
+                'notes' => $data['body'] ?? '',
+            ];
+        }
+    } else {
+        error_log('gigio-mailshot: update check failed');
+    }
+    // Cache failures briefly too, so a GitHub outage doesn't slow every admin page
+    set_transient($cacheKey, $release ?: '', $release ? 6 * HOUR_IN_SECONDS : 15 * MINUTE_IN_SECONDS);
+    return $release;
+}
+
+// Tell WordPress about a newer release (Update URI header routes this to the hook for host "github.com")
+add_filter('update_plugins_github.com', function ($update, $pluginData, $pluginFile) {
+    if ($pluginFile !== plugin_basename(__FILE__)) {
+        return $update;
+    }
+    $release = gigio_mailshot_latest_release();
+    if (!$release || !$release['zip'] || version_compare($release['version'], $pluginData['Version'], '<=')) {
+        return $update;
+    }
+    return [
+        'slug' => dirname($pluginFile),
+        'version' => $release['version'],
+        'url' => $release['url'],
+        'package' => $release['zip'],
+    ];
+}, 10, 3);
+
+// Make "Check again" on the Updates screen bypass the cache
+add_action('delete_site_transient_update_plugins', function () {
+    delete_transient('gigio_mailshot_latest_release');
+});
+
+// GitHub zips of source archives unpack to "owner-repo-hash/"; make sure the folder name stays put
+add_filter('upgrader_source_selection', function ($source, $remote_source, $upgrader, $hook_extra) {
+    global $wp_filesystem;
+    if (empty($hook_extra['plugin']) || $hook_extra['plugin'] !== plugin_basename(__FILE__)) {
+        return $source;
+    }
+    $wanted = trailingslashit($remote_source) . dirname(plugin_basename(__FILE__)) . '/';
+    if (trailingslashit($source) !== $wanted && $wp_filesystem->move($source, $wanted)) {
+        return $wanted;
+    }
+    return $source;
+}, 10, 4);
